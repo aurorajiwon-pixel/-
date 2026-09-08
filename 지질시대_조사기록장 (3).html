@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>지질 시대 조사 기록장</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Jua&family=Noto+Sans+KR:wght@400;500;700;900&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#FFF7EC; --paper:#FFFFFF; --ink:#3A2E39; --inkSoft:#9187A0; --line:#F0E3CE;
+    --precambrian:#8C7AE6; --precambrianSoft:#EFEBFC;
+    --paleozoic:#21B399; --paleozoicSoft:#DFF7F1;
+    --mesozoic:#FF9A3D; --mesozoicSoft:#FFECD8;
+    --cenozoic:#3FA9E8; --cenozoicSoft:#E3F4FC;
+    --role:#FFC93C; --roleSoft:#FFF6DC;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:radial-gradient(circle at 8% 10%, rgba(255,201,60,.16), transparent 40%),
+               radial-gradient(circle at 92% 90%, rgba(63,169,232,.14), transparent 42%), var(--bg);
+    color:var(--ink); font-family:'Noto Sans KR',sans-serif;
+    min-height:100vh; display:flex; flex-direction:column; align-items:center; padding:24px 16px 60px;
+  }
+  .app{ width:100%; max-width:880px; display:flex; flex-direction:column; gap:16px; }
+  h1{ font-family:'Jua',sans-serif; font-size:clamp(24px,4vw,32px); text-align:center; margin:4px 0 0; }
+  .sub{ text-align:center; color:var(--inkSoft); font-size:13px; margin-bottom:6px; }
+
+  .card{ background:var(--paper); border-radius:20px; padding:20px 22px; box-shadow:0 6px 0 var(--line); }
+  .card h2{ font-family:'Jua',sans-serif; font-size:18px; margin:0 0 12px; color:var(--role); }
+
+  label{ display:block; font-size:13px; font-weight:700; margin:12px 0 6px; color:var(--ink); }
+  label:first-of-type{ margin-top:0; }
+  input[type=text], textarea{
+    width:100%; border:1.5px solid var(--line); border-radius:12px; padding:10px 12px;
+    font-family:'Noto Sans KR',sans-serif; font-size:14px; color:var(--ink); background:var(--bg);
+    resize:vertical;
+  }
+  textarea{ min-height:56px; line-height:1.5; }
+  input[type=text]:focus, textarea:focus{ outline:none; border-color:var(--role); background:#fff; }
+
+  .row{ display:flex; gap:10px; flex-wrap:wrap; }
+  .row > div{ flex:1; min-width:140px; }
+
+  .pillgroup{ display:flex; gap:8px; flex-wrap:wrap; }
+  .pill{
+    font-family:'Jua',sans-serif; font-size:13px; padding:8px 16px; border-radius:20px;
+    background:var(--bg); color:var(--inkSoft); cursor:pointer; border:2px solid transparent; transition:.15s;
+  }
+  .pill.active{ color:#fff; border-color:transparent; }
+
+  .hint{ font-size:12px; color:var(--inkSoft); margin-top:-2px; margin-bottom:4px; }
+
+  #roleQuestions{ display:flex; flex-direction:column; gap:2px; }
+  .qblock{ border-top:1px dashed var(--line); padding-top:12px; margin-top:4px; }
+  .qblock:first-child{ border-top:none; padding-top:0; margin-top:0; }
+
+  .genBtn{
+    display:block; width:100%; margin-top:6px; padding:14px; border:none; border-radius:14px;
+    background:var(--role); color:#fff; font-family:'Jua',sans-serif; font-size:17px; cursor:pointer;
+    box-shadow:0 4px 0 rgba(0,0,0,.15);
+  }
+  .genBtn:active{ transform:translateY(2px); box-shadow:0 2px 0 rgba(0,0,0,.15); }
+
+  #resultBox{ display:none; }
+  #resultBox.show{ display:block; }
+  #resultText{
+    width:100%; min-height:230px; font-family:'Space Mono',monospace; font-size:12.5px; line-height:1.7;
+    border:1.5px solid var(--line); border-radius:12px; padding:14px; background:var(--bg); color:var(--ink);
+  }
+  .copyBtn{
+    margin-top:10px; padding:12px 18px; border:none; border-radius:12px; background:var(--ink); color:#fff;
+    font-family:'Jua',sans-serif; font-size:14px; cursor:pointer;
+  }
+  .copyBtn.copied{ background:var(--paleozoic); }
+
+  .missing{ outline:2px solid #FF5D7A; outline-offset:2px; border-radius:12px; }
+</style>
+</head>
+<body>
+<div class="app">
+  <h1>🔍 지질 시대 조사 기록장</h1>
+  <div class="sub">역할을 고르고 질문에 답하면, 패들릿에 붙여넣을 글이 자동으로 만들어져요</div>
+
+  <div class="card">
+    <h2 style="color:var(--ink);">① 기본 정보</h2>
+    <div class="row">
+      <div><label>이름</label><input type="text" id="fName" placeholder="김지구"></div>
+      <div><label>모둠</label><input type="text" id="fGroup" placeholder="예: 3반 2모둠"></div>
+    </div>
+    <label>우리 모둠이 맡은 지질 시대</label>
+    <div class="pillgroup" id="eraPills"></div>
+    <label>우리 모둠 인원</label>
+    <div class="pillgroup" id="sizePills"></div>
+    <label>내 담당 번호 (담당 내용 요소)</label>
+    <div class="pillgroup" id="rolePills"></div>
+  </div>
+
+  <div class="card" id="questionCard" style="display:none;">
+    <h2 id="roleTitle">② 조사 내용 작성</h2>
+    <div class="hint" id="roleHint"></div>
+    <div id="roleQuestions"></div>
+  </div>
+
+  <div class="card" id="commonCard" style="display:none;">
+    <h2 style="color:var(--ink);">③ 마무리</h2>
+    <label>📚 참고한 자료 · 출처 (사이트 이름, 책 제목 등)</label>
+    <textarea id="fSource" placeholder="예: 미래엔 통합과학2 교과서, 국립중앙과학관 자료"></textarea>
+    <label>💡 이 내용을 웹앱에 어떻게 담을지</label>
+    <textarea id="fIdea" placeholder="예: 대표 동물 카드를 만들어서 해양생물은 파란색, 육상생물은 초록색으로 구분해서 보여주기"></textarea>
+    <label>🤝 오늘 조사하면서 어려웠던 점 / 더 알아볼 점</label>
+    <textarea id="fFeel" placeholder="예: 자료마다 시기가 조금씩 달라서 어떤 값을 써야 할지 헷갈렸다"></textarea>
+  </div>
+
+  <button class="genBtn" id="genBtn" style="display:none;">✨ 패들릿용 글 만들기</button>
+
+  <div class="card" id="resultBox">
+    <h2 style="color:var(--ink);">완성! 아래 글을 복사해서 패들릿에 붙여넣으세요</h2>
+    <textarea id="resultText" readonly></textarea>
+    <button class="copyBtn" id="copyBtn">📋 복사하기</button>
+  </div>
+</div>
+
+<script>
+const ERAS = [
+  {id:'precambrian', name:'선캄브리아시대', color:'var(--precambrian)', soft:'var(--precambrianSoft)'},
+  {id:'paleozoic', name:'고생대', color:'var(--paleozoic)', soft:'var(--paleozoicSoft)'},
+  {id:'mesozoic', name:'중생대', color:'var(--mesozoic)', soft:'var(--mesozoicSoft)'},
+  {id:'cenozoic', name:'신생대', color:'var(--cenozoic)', soft:'var(--cenozoicSoft)'},
+];
+
+// 담당자별 안내 질문 (1인당 내용 요소 2개씩)
+const ROLES = {
+  r1: {
+    label:'1번 · ①② 시대 구분 / 기후', color:'#3FA9E8', soft:'#E3F4FC',
+    hint:'우리 시대가 언제였고, 그때 기후가 어땠는지를 구체적인 수치와 함께 조사하자.',
+    questions:[
+      {k:'① 시작·종료 시기', ph:'예: 약 ◯◯억 년 전에 시작해서 약 ◯◯억 년 전에 끝났다'},
+      {k:'① 전체 지질 시대에서 차지하는 비율', ph:'예: 전체 지질 시대의 약 ◯◯%를 차지한다'},
+      {k:'① 이 시대를 나누는 기준이 된 사건', ph:'예: 어떤 생물의 등장이나 멸종을 기준으로 앞뒤 시대와 나뉘는지'},
+      {k:'② 전반적인 기후 (온난/한랭)', ph:'예: 대체로 온난했는지 한랭했는지, 그 근거는 무엇인지'},
+      {k:'② 빙하기 유무와 시기', ph:'예: 빙하기가 있었는지, 있었다면 몇 번, 언제였는지 (없으면 "없음"과 그 이유)'},
+    ]
+  },
+  r2: {
+    label:'2번 · ③④ 대기·해양 / 수륙 분포', color:'#21B399', soft:'#DFF7F1',
+    hint:'대기와 바다의 상태, 그리고 대륙이 어떻게 배치되어 있었는지를 조사하자.',
+    questions:[
+      {k:'③ 대기 중 산소 농도의 변화', ph:'예: 산소가 늘었는지 줄었는지, 그 원인은 무엇인지'},
+      {k:'③ 이산화 탄소 농도와 그 영향', ph:'예: 이산화 탄소가 많아 온실 효과가 컸는지 등'},
+      {k:'③ 바다의 상태 (해수면, 수온 등)', ph:'예: 해수면이 높아졌는지 낮아졌는지, 얕은 바다가 넓었는지'},
+      {k:'④ 대륙의 배치', ph:'예: 판게아가 형성되었는지 분리되었는지, 대륙들이 어디에 있었는지'},
+      {k:'④ 지각 변동과 그 결과', ph:'예: 조산 운동으로 어떤 산맥이 생겼는지, 화산 활동은 활발했는지'},
+    ]
+  },
+  r3: {
+    label:'3번 · ⑤⑥ 대표 동물 / 대표 식물', color:'#FF5D7A', soft:'#FFE3E9',
+    hint:'구체적인 생물 이름까지 정확하게 조사하자. 해양생물인지 육상생물인지 꼭 구분해야 한다.',
+    questions:[
+      {k:'⑤ 대표 동물 2종 이상과 각각의 특징', ph:'예: 삼엽충 — 단단한 껍데기, 몸이 세 부분으로 나뉨 / 완족류 — ...'},
+      {k:'⑤ 각 동물의 해양생물·육상생물 구분', ph:'예: 삼엽충은 해양생물, 양서류는 육지로 진출한 생물'},
+      {k:'⑤ 이 동물들이 번성할 수 있었던 이유', ph:'예: 당시 환경(산소 농도, 기후 등)과 연결해서 설명'},
+      {k:'⑥ 대표 식물 1종 이상과 그 특징', ph:'예: 양치식물 — 포자로 번식, 습한 곳에서 잘 자람'},
+      {k:'⑥ 앞뒤 시대 식물과 비교한 변화', ph:'예: 이전 시대에 비해 무엇이 달라졌는지 (양치식물 → 겉씨식물 등)'},
+    ]
+  },
+  r4: {
+    label:'4번 · ⑦⑧ 표준화석 / 시대 말 사건', color:'#FFC93C', soft:'#FFF6DC',
+    hint:'표준화석은 "왜 표준화석인지"를 조건과 연결해서 설명해야 한다.',
+    questions:[
+      {k:'⑦ 이 시대의 표준화석', ph:'예: 삼엽충 — 이 시대 지층에서만 발견된다'},
+      {k:'⑦ 표준화석의 조건 4가지와 연결한 설명', ph:'생존 기간이 짧다 / 개체 수가 많다 / 식별이 쉽다 / 분포 면적이 넓다 중 어떤 점에서 잘 맞는지'},
+      {k:'⑦ 이 화석으로 알 수 있는 것', ph:'예: 이 화석이 나오면 그 지층이 언제 쌓였는지 알 수 있다'},
+      {k:'⑧ 이 시대 말에 일어난 사건', ph:'예: 대멸종이 있었는지, 어떤 생물이 사라졌는지 (선캄브리아시대는 "해당 없음"과 그 이유)'},
+      {k:'⑧ 그 사건의 원인으로 제시되는 요인', ph:'예: 지각 변동, 수륙 분포 변화, 기후 변화, 운석 충돌 등'},
+    ]
+  },
+  r5: {
+    label:'5번 · ⑨⑩ 시상화석 / 환경과 생물의 관계', color:'#8C7AE6', soft:'#EFEBFC',
+    hint:'5인 모둠만 담당하는 요소입니다. 화석으로 환경을 추론하고, 환경과 생물을 연결해 설명하자.',
+    questions:[
+      {k:'⑨ 이 시대와 관련된 시상화석', ph:'예: 고사리, 산호 등 (해당 시대 지층에서 발견되는 것)'},
+      {k:'⑨ 그 화석이 알려주는 서식 환경', ph:'예: 산호 화석이 나오면 따뜻하고 얕은 바다였음을 알 수 있다'},
+      {k:'⑨ 표준화석과 시상화석의 조건 비교', ph:'예: 시상화석은 생존 기간이 길고 분포 면적이 좁아야 하는데, 왜 그런지'},
+      {k:'⑩ 이 시대의 환경 변화가 생물에 준 영향', ph:'예: 오존층이 생겨 자외선이 차단되자 생물이 육지로 진출할 수 있었다'},
+      {k:'⑩ 환경과 생물을 연결한 구체적인 사례 1가지', ph:'예: 기후가 한랭해지자 적응하지 못한 생물이 멸종했다'},
+    ]
+  }
+};
+const ROLE_ORDER_4 = ['r1','r2','r3','r4'];
+const ROLE_ORDER_5 = ['r1','r2','r3','r4','r5'];
+
+let state = { era:null, size:null, role:null };
+
+const eraPills = document.getElementById('eraPills');
+ERAS.forEach(e=>{
+  const el = document.createElement('div');
+  el.className = 'pill';
+  el.textContent = e.name;
+  el.addEventListener('click', ()=>{
+    [...eraPills.children].forEach(c=>{ c.classList.remove('active'); c.style.background=''; c.style.color=''; });
+    el.classList.add('active');
+    const hex = getComputedStyle(document.documentElement).getPropertyValue(e.color.slice(4,-1)).trim();
+    el.style.background = hex; el.style.color = '#fff';
+    state.era = e;
+    checkReady();
+  });
+  eraPills.appendChild(el);
+});
+
+const sizePills = document.getElementById('sizePills');
+[['4인 모둠',4], ['5인 모둠',5]].forEach(([label,n])=>{
+  const el = document.createElement('div');
+  el.className='pill'; el.textContent = label;
+  el.addEventListener('click', ()=>{
+    [...sizePills.children].forEach(c=>{ c.classList.remove('active'); c.style.background=''; c.style.color=''; });
+    el.classList.add('active'); el.style.background = '#3A2E39'; el.style.color = '#fff';
+    state.size = n;
+    renderRolePills();
+    checkReady();
+  });
+  sizePills.appendChild(el);
+});
+
+const rolePills = document.getElementById('rolePills');
+function renderRolePills(){
+  rolePills.innerHTML = '';
+  if(!state.size) return;
+  const order = state.size===5 ? ROLE_ORDER_5 : ROLE_ORDER_4;
+  order.forEach(rid=>{
+    const r = ROLES[rid];
+    const el = document.createElement('div');
+    el.className='pill'; el.textContent = r.label;
+    el.addEventListener('click', ()=>{
+      [...rolePills.children].forEach(c=>{ c.classList.remove('active'); c.style.background=''; c.style.color=''; });
+      el.classList.add('active'); el.style.background = r.color; el.style.color = '#fff';
+      state.role = rid;
+      renderQuestions();
+      checkReady();
+    });
+    rolePills.appendChild(el);
+  });
+}
+
+function renderQuestions(){
+  const r = ROLES[state.role];
+  document.getElementById('questionCard').style.display = 'block';
+  document.getElementById('commonCard').style.display = 'block';
+  document.getElementById('genBtn').style.display = 'block';
+  document.documentElement.style.setProperty('--role', r.color);
+  document.documentElement.style.setProperty('--roleSoft', r.soft);
+  document.getElementById('roleTitle').textContent = `② ${r.label}`;
+  document.getElementById('roleHint').textContent = r.hint;
+  const box = document.getElementById('roleQuestions');
+  box.innerHTML = '';
+  r.questions.forEach((q,i)=>{
+    const block = document.createElement('div');
+    block.className = 'qblock';
+    block.innerHTML = `<label>${q.k}</label><textarea id="q${i}" placeholder="${q.ph}"></textarea>`;
+    box.appendChild(block);
+  });
+  document.getElementById('resultBox').classList.remove('show');
+}
+
+function checkReady(){
+  // no strict gating; just ensure role selected before showing generate button (handled in renderQuestions)
+}
+
+document.getElementById('genBtn').addEventListener('click', ()=>{
+  const name = document.getElementById('fName').value.trim();
+  const group = document.getElementById('fGroup').value.trim();
+  const era = state.era;
+  const role = state.role;
+  const requiredBasics = [
+    [document.getElementById('fName'), name],
+    [document.getElementById('fGroup'), group],
+  ];
+  let ok = true;
+  requiredBasics.forEach(([el,val])=>{ el.classList.toggle('missing', !val); if(!val) ok=false; });
+  if(!era){ alert('담당 지질 시대를 선택해 주세요!'); return; }
+  if(!role){ alert('내 담당 번호를 선택해 주세요!'); return; }
+  if(!ok){ alert('이름과 모둠을 입력해 주세요!'); return; }
+
+  const r = ROLES[role];
+  const lines = [];
+  lines.push(`📛 이름 / 모둠 / 담당 시대: ${name} / ${group} / ${era.name}`);
+  lines.push(`🎭 내 담당: ${r.label}`);
+  lines.push(`🔍 조사한 핵심 내용:`);
+  r.questions.forEach((q,i)=>{
+    const val = document.getElementById('q'+i).value.trim() || '(작성 안 함)';
+    lines.push(`  - ${q.k}: ${val}`);
+  });
+  const source = document.getElementById('fSource').value.trim() || '(작성 안 함)';
+  const idea = document.getElementById('fIdea').value.trim() || '(작성 안 함)';
+  const feel = document.getElementById('fFeel').value.trim() || '(작성 안 함)';
+  lines.push(`📚 참고한 자료 · 출처: ${source}`);
+  lines.push(`💡 이 내용을 웹앱에 담는 방법: ${idea}`);
+  lines.push(`🤝 어려웠던 점 / 더 알아볼 점: ${feel}`);
+
+  document.getElementById('resultText').value = lines.join('\n');
+  document.getElementById('resultBox').classList.add('show');
+  document.getElementById('copyBtn').classList.remove('copied');
+  document.getElementById('copyBtn').textContent = '📋 복사하기';
+  document.getElementById('resultBox').scrollIntoView({behavior:'smooth', block:'start'});
+});
+
+document.getElementById('copyBtn').addEventListener('click', ()=>{
+  const ta = document.getElementById('resultText');
+  ta.select(); ta.setSelectionRange(0, 999999);
+  let copied = false;
+  try{ copied = document.execCommand('copy'); }catch(e){}
+  if(!copied && navigator.clipboard){
+    navigator.clipboard.writeText(ta.value).then(()=>{
+      document.getElementById('copyBtn').textContent = '✅ 복사 완료!';
+      document.getElementById('copyBtn').classList.add('copied');
+    });
+  } else {
+    document.getElementById('copyBtn').textContent = '✅ 복사 완료!';
+    document.getElementById('copyBtn').classList.add('copied');
+  }
+});
+</script>
+</body>
+</html>
